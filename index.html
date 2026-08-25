@@ -37,7 +37,25 @@
   .contour{position:fixed;inset:0;z-index:0;opacity:.16;pointer-events:none;}
   .wrap{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:28px 18px 40px;}
 
-  header.top{margin-bottom:22px;}
+  header.top{margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+  .gear-btn{
+    background:var(--ink-soft);border:1px solid var(--ink-line);color:var(--brass);
+    border-radius:3px;width:38px;height:38px;flex-shrink:0;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;font-size:15px;display:flex;align-items:center;justify-content:center;
+    margin-top:2px;
+  }
+  .gear-btn:active{background:#ffffff10;}
+  .settings-note{color:#8a94a1;font-size:12.5px;line-height:1.5;margin:0 0 16px;}
+  .setting-row{
+    display:flex;align-items:center;gap:10px;background:var(--ink-soft);
+    border:1px solid var(--ink-line);border-radius:3px;padding:10px 12px;margin-bottom:8px;
+  }
+  .setting-row .label{flex:1;font-size:14px;}
+  .sync-btn{
+    background:none;border:1px solid var(--brass-dim);color:var(--brass);border-radius:3px;
+    font-family:'JetBrains Mono',monospace;font-size:10.5px;padding:7px 10px;cursor:pointer;
+    text-transform:uppercase;letter-spacing:.05em;margin-top:4px;
+  }
   .eyebrow{
     font-family:'JetBrains Mono',monospace;
     font-size:11px;letter-spacing:.18em;text-transform:uppercase;
@@ -214,14 +232,41 @@
 
 <div class="wrap">
   <header class="top">
-    <p class="eyebrow">Field Log · No. 01</p>
-    <h1 class="title">Suburb Explorer</h1>
-    <p class="subtitle">Your ongoing catalogue of neighbourhoods, walked and rated.</p>
+    <div>
+      <p class="eyebrow">Field Log · No. 01</p>
+      <h1 class="title">Suburb Explorer</h1>
+      <p class="subtitle">Your ongoing catalogue of neighbourhoods, walked and rated.</p>
+    </div>
+    <button class="gear-btn" onclick="openSettings()" title="Settings">⚙</button>
   </header>
 
   <!-- LIST VIEW -->
   <div id="listView">
     <div class="grid" id="suburbGrid"></div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="settingsView" class="hidden">
+    <button class="backbtn" onclick="goToList()">&larr; All suburbs</button>
+    <h2 style="font-family:'Fraunces',serif;font-size:26px;margin:0 0 6px;color:var(--paper);">Defaults</h2>
+    <p class="settings-note">Tasks and rating categories added here apply to every new suburb automatically. Use "Sync to all" to add any missing ones to suburbs you've already started.</p>
+
+    <div class="section-label">Tasks for every suburb</div>
+    <div id="globalTaskList"></div>
+    <div class="add-row">
+      <input id="newGlobalTaskInput" type="text" placeholder="e.g. Farmers market">
+      <button onclick="addGlobalTask()">Add</button>
+    </div>
+    <button class="sync-btn" onclick="syncTasksToAll()">Sync tasks to all suburbs</button>
+
+    <div class="section-label">Rating categories</div>
+    <p class="settings-note" style="margin-top:-4px;">Each is rated up to 5 stars per suburb, e.g. best lookout, best café, best sunset spot.</p>
+    <div id="globalCatList"></div>
+    <div class="add-row">
+      <input id="newGlobalCatInput" type="text" placeholder="e.g. Best pub">
+      <button onclick="addGlobalCategory()">Add</button>
+    </div>
+    <button class="sync-btn" onclick="syncCategoriesToAll()">Sync categories to all suburbs</button>
   </div>
 
   <!-- DETAIL VIEW -->
@@ -255,23 +300,46 @@
 <footer class="tip">Stored on this device only · No account, no upload</footer>
 
 <script>
-const STORAGE_KEY = 'field-log-suburbs-v1';
-const DEFAULT_TASKS = ['Bike ride', 'Try a restaurant', 'Browse the shops', 'Walk the main street', 'Visit a park'];
-const DEFAULT_SUPS = ['Best lookout', 'Best street', 'Best café', 'Best sunset spot'];
+const STORAGE_KEY = 'field-log-suburbs-v2';
+const OLD_STORAGE_KEY = 'field-log-suburbs-v1';
+const SEED_TASKS = ['Bike ride', 'Try a restaurant', 'Browse the shops', 'Walk the main street', 'Visit a park'];
+const SEED_SUPS = ['Best lookout', 'Best street', 'Best café', 'Best sunset spot'];
 
 let state = load();
 let activeId = null;
 
+function freshSettings(){
+  return {
+    taskTemplates: SEED_TASKS.map(l=>({id:uid(), label:l})),
+    ratingCategories: SEED_SUPS.map(n=>({id:uid(), name:n}))
+  };
+}
+
 function load(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  }catch(e){ return []; }
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(!parsed.settings) parsed.settings = freshSettings();
+      if(!parsed.suburbs) parsed.suburbs = [];
+      return parsed;
+    }
+    // migrate from v1 (plain array of suburbs, no settings)
+    const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
+    if(oldRaw){
+      const oldSuburbs = JSON.parse(oldRaw);
+      return { settings: freshSettings(), suburbs: Array.isArray(oldSuburbs) ? oldSuburbs : [] };
+    }
+    return { settings: freshSettings(), suburbs: [] };
+  }catch(e){
+    return { settings: freshSettings(), suburbs: [] };
+  }
 }
 function save(){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function norm(str){ return (str||'').trim().toLowerCase(); }
 
 function progressOf(suburb){
   if(!suburb.tasks.length) return 0;
@@ -282,7 +350,7 @@ function progressOf(suburb){
 function renderGrid(){
   const grid = document.getElementById('suburbGrid');
   grid.innerHTML = '';
-  state.forEach(sub=>{
+  state.suburbs.forEach(sub=>{
     const pct = progressOf(sub);
     const doneCount = sub.tasks.filter(t=>t.done).length;
     const topRated = sub.superlatives.filter(s=>s.rating>0).sort((a,b)=>b.rating-a.rating)[0];
@@ -324,17 +392,17 @@ function createSuburb(){
     name: name.trim(),
     region: region.trim(),
     createdAt: Date.now(),
-    tasks: DEFAULT_TASKS.map(l=>({id:uid(), label:l, done:false})),
-    superlatives: DEFAULT_SUPS.map(c=>({id:uid(), category:c, place:'', rating:0, note:''}))
+    tasks: state.settings.taskTemplates.map(t=>({id:uid(), label:t.label, done:false})),
+    superlatives: state.settings.ratingCategories.map(c=>({id:uid(), category:c.name, place:'', rating:0, note:''}))
   };
-  state.push(sub);
+  state.suburbs.push(sub);
   save();
   renderGrid();
 }
 
 function deleteSuburb(){
   if(!confirm('Remove this suburb and all its data?')) return;
-  state = state.filter(s=>s.id!==activeId);
+  state.suburbs = state.suburbs.filter(s=>s.id!==activeId);
   save();
   goToList();
 }
@@ -348,11 +416,18 @@ function openSuburb(id){
 function goToList(){
   activeId = null;
   document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('settingsView').classList.add('hidden');
   document.getElementById('listView').classList.remove('hidden');
   renderGrid();
 }
+function openSettings(){
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('settingsView').classList.remove('hidden');
+  renderSettings();
+}
 
-function getActive(){ return state.find(s=>s.id===activeId); }
+function getActive(){ return state.suburbs.find(s=>s.id===activeId); }
 
 function renderDetail(){
   const sub = getActive();
@@ -453,6 +528,90 @@ function addSuperlative(){
   input.value='';
   save();
   renderDetail();
+}
+
+function renderSettings(){
+  const taskList = document.getElementById('globalTaskList');
+  taskList.innerHTML = '';
+  if(!state.settings.taskTemplates.length){
+    taskList.innerHTML = '<p class="empty-note">No default tasks yet.</p>';
+  }
+  state.settings.taskTemplates.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    row.innerHTML = `
+      <div class="label">${escapeHtml(t.label)}</div>
+      <button class="task-del" onclick="removeGlobalTask('${t.id}')">&times;</button>
+    `;
+    taskList.appendChild(row);
+  });
+
+  const catList = document.getElementById('globalCatList');
+  catList.innerHTML = '';
+  if(!state.settings.ratingCategories.length){
+    catList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
+  }
+  state.settings.ratingCategories.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    row.innerHTML = `
+      <div class="label">${escapeHtml(c.name)}</div>
+      <button class="task-del" onclick="removeGlobalCategory('${c.id}')">&times;</button>
+    `;
+    catList.appendChild(row);
+  });
+}
+
+function addGlobalTask(){
+  const input = document.getElementById('newGlobalTaskInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(state.settings.taskTemplates.some(t=>norm(t.label)===norm(val))){ input.value=''; return; }
+  state.settings.taskTemplates.push({id:uid(), label:val});
+  input.value='';
+  save();
+  renderSettings();
+}
+function removeGlobalTask(id){
+  state.settings.taskTemplates = state.settings.taskTemplates.filter(t=>t.id!==id);
+  save();
+  renderSettings();
+}
+function syncTasksToAll(){
+  state.suburbs.forEach(sub=>{
+    state.settings.taskTemplates.forEach(t=>{
+      const exists = sub.tasks.some(x=>norm(x.label)===norm(t.label));
+      if(!exists) sub.tasks.push({id:uid(), label:t.label, done:false});
+    });
+  });
+  save();
+  alert('Missing tasks added to all suburbs.');
+}
+
+function addGlobalCategory(){
+  const input = document.getElementById('newGlobalCatInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(state.settings.ratingCategories.some(c=>norm(c.name)===norm(val))){ input.value=''; return; }
+  state.settings.ratingCategories.push({id:uid(), name:val});
+  input.value='';
+  save();
+  renderSettings();
+}
+function removeGlobalCategory(id){
+  state.settings.ratingCategories = state.settings.ratingCategories.filter(c=>c.id!==id);
+  save();
+  renderSettings();
+}
+function syncCategoriesToAll(){
+  state.suburbs.forEach(sub=>{
+    state.settings.ratingCategories.forEach(c=>{
+      const exists = sub.superlatives.some(x=>norm(x.category)===norm(c.name));
+      if(!exists) sub.superlatives.push({id:uid(), category:c.name, place:'', rating:0, note:''});
+    });
+  });
+  save();
+  alert('Missing categories added to all suburbs.');
 }
 
 function escapeHtml(str){

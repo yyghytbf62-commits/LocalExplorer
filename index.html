@@ -178,31 +178,49 @@
     cursor:pointer;text-transform:uppercase;
   }
 
-  .superlative{
+  .best-card{
     background:var(--ink-soft);border:1px solid var(--ink-line);border-radius:3px;
     padding:13px 14px;margin-bottom:10px;
   }
-  .sup-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-  .sup-cat{
+  .best-cat{
     font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;
-    text-transform:uppercase;color:var(--brass);
+    text-transform:uppercase;color:var(--brass);display:block;margin-bottom:8px;
   }
   .stars{display:flex;gap:3px;}
   .star{cursor:pointer;font-size:16px;color:#4a5768;user-select:none;}
   .star.on{color:var(--brass);}
-  .sup-place{
+  .best-place{
     width:100%;background:transparent;border:none;border-bottom:1px solid var(--ink-line);
     color:var(--paper);font-family:'Fraunces',serif;font-size:16px;padding:4px 0;margin-bottom:8px;
   }
-  .sup-place::placeholder{color:#5b6672;font-family:'Public Sans',sans-serif;}
-  .sup-note{
+  .best-place::placeholder{color:#5b6672;font-family:'Public Sans',sans-serif;}
+  .best-note{
     width:100%;background:transparent;border:none;color:#b7c0cb;font-size:12.5px;
     resize:none;font-family:'Public Sans',sans-serif;padding:0;min-height:32px;
   }
-  .sup-note::placeholder{color:#4a5563;}
-  .sup-del{
+  .best-note::placeholder{color:#4a5563;}
+  .best-del{
     background:none;border:none;color:#5b6672;font-size:11px;cursor:pointer;
     font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-top:6px;padding:0;
+  }
+
+  .rating-row{
+    background:var(--ink-soft);border:1px solid var(--ink-line);border-radius:3px;
+    padding:12px 14px;margin-bottom:10px;
+  }
+  .rating-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px;}
+  .rating-cat{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--brass);
+  }
+  .rating-note{
+    width:100%;background:transparent;border:none;color:#b7c0cb;font-size:12.5px;
+    resize:none;font-family:'Public Sans',sans-serif;padding:0;min-height:26px;
+  }
+  .rating-note::placeholder{color:#4a5563;}
+  .rating-del{
+    background:none;border:none;color:#5b6672;font-size:11px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-top:4px;padding:0;
   }
 
   .progress-bar{height:5px;background:var(--ink-soft);border-radius:3px;overflow:hidden;margin-top:14px;}
@@ -249,7 +267,7 @@
   <div id="settingsView" class="hidden">
     <button class="backbtn" onclick="goToList()">&larr; All suburbs</button>
     <h2 style="font-family:'Fraunces',serif;font-size:26px;margin:0 0 6px;color:var(--paper);">Defaults</h2>
-    <p class="settings-note">Tasks and rating categories added here apply to every new suburb automatically. Use "Sync to all" to add any missing ones to suburbs you've already started.</p>
+    <p class="settings-note">Items added here apply to every new suburb automatically. Use "Sync to all" to add any missing ones to suburbs you've already started.</p>
 
     <div class="section-label">Tasks for every suburb</div>
     <div id="globalTaskList"></div>
@@ -259,14 +277,23 @@
     </div>
     <button class="sync-btn" onclick="syncTasksToAll()">Sync tasks to all suburbs</button>
 
-    <div class="section-label">Rating categories</div>
-    <p class="settings-note" style="margin-top:-4px;">Each is rated up to 5 stars per suburb, e.g. best lookout, best café, best sunset spot.</p>
-    <div id="globalCatList"></div>
+    <div class="section-label">Bests</div>
+    <p class="settings-note" style="margin-top:-4px;">A place + note for each, no rating — e.g. best lookout, best café, best sunset spot.</p>
+    <div id="globalBestList"></div>
     <div class="add-row">
-      <input id="newGlobalCatInput" type="text" placeholder="e.g. Best pub">
-      <button onclick="addGlobalCategory()">Add</button>
+      <input id="newGlobalBestInput" type="text" placeholder="e.g. Best pub">
+      <button onclick="addGlobalBest()">Add</button>
     </div>
-    <button class="sync-btn" onclick="syncCategoriesToAll()">Sync categories to all suburbs</button>
+    <button class="sync-btn" onclick="syncBestsToAll()">Sync bests to all suburbs</button>
+
+    <div class="section-label">5-star ratings</div>
+    <p class="settings-note" style="margin-top:-4px;">Rate the suburb itself 1–5 stars on each, e.g. walkability, food scene, overall vibe.</p>
+    <div id="globalRatingList"></div>
+    <div class="add-row">
+      <input id="newGlobalRatingInput" type="text" placeholder="e.g. Walkability">
+      <button onclick="addGlobalRating()">Add</button>
+    </div>
+    <button class="sync-btn" onclick="syncRatingsToAll()">Sync ratings to all suburbs</button>
   </div>
 
   <!-- DETAIL VIEW -->
@@ -288,11 +315,18 @@
       <button onclick="addTask()">Add</button>
     </div>
 
-    <div class="section-label">Superlatives</div>
-    <div id="supList"></div>
+    <div class="section-label">Bests</div>
+    <div id="bestsList"></div>
     <div class="add-row">
-      <input id="newSupInput" type="text" placeholder="New category, e.g. Best pub">
-      <button onclick="addSuperlative()">Add</button>
+      <input id="newBestInput" type="text" placeholder="New category, e.g. Best pub">
+      <button onclick="addBest()">Add</button>
+    </div>
+
+    <div class="section-label">5-star ratings</div>
+    <div id="ratingsList"></div>
+    <div class="add-row">
+      <input id="newRatingInput" type="text" placeholder="New category, e.g. Walkability">
+      <button onclick="addRating()">Add</button>
     </div>
   </div>
 </div>
@@ -300,10 +334,12 @@
 <footer class="tip">Stored on this device only · No account, no upload</footer>
 
 <script>
-const STORAGE_KEY = 'field-log-suburbs-v2';
-const OLD_STORAGE_KEY = 'field-log-suburbs-v1';
+const STORAGE_KEY = 'field-log-suburbs-v3';
+const V2_KEY = 'field-log-suburbs-v2';
+const V1_KEY = 'field-log-suburbs-v1';
 const SEED_TASKS = ['Bike ride', 'Try a restaurant', 'Browse the shops', 'Walk the main street', 'Visit a park'];
-const SEED_SUPS = ['Best lookout', 'Best street', 'Best café', 'Best sunset spot'];
+const SEED_BESTS = ['Best lookout', 'Best street', 'Best café', 'Best sunset spot'];
+const SEED_RATINGS = ['Walkability', 'Food scene', 'Overall vibe'];
 
 let state = load();
 let activeId = null;
@@ -311,8 +347,17 @@ let activeId = null;
 function freshSettings(){
   return {
     taskTemplates: SEED_TASKS.map(l=>({id:uid(), label:l})),
-    ratingCategories: SEED_SUPS.map(n=>({id:uid(), name:n}))
+    bestCategories: SEED_BESTS.map(n=>({id:uid(), name:n})),
+    ratingCategories: SEED_RATINGS.map(n=>({id:uid(), name:n}))
   };
+}
+
+// old "superlative" combined category+place+rating+note; split into a best (place/note) and,
+// if it had a rating, a matching rating entry too.
+function splitOldSuperlatives(superlatives){
+  const bests = (superlatives||[]).map(s=>({id:s.id||uid(), category:s.category, place:s.place||'', note:s.note||''}));
+  const ratings = (superlatives||[]).filter(s=>s.rating>0).map(s=>({id:uid(), category:s.category, stars:s.rating, note:''}));
+  return {bests, ratings};
 }
 
 function load(){
@@ -320,19 +365,43 @@ function load(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      if(!parsed.settings) parsed.settings = freshSettings();
-      if(!parsed.suburbs) parsed.suburbs = [];
+      const fresh = freshSettings();
+      parsed.settings = parsed.settings || fresh;
+      parsed.settings.taskTemplates = parsed.settings.taskTemplates || fresh.taskTemplates;
+      parsed.settings.bestCategories = parsed.settings.bestCategories || fresh.bestCategories;
+      parsed.settings.ratingCategories = parsed.settings.ratingCategories || fresh.ratingCategories;
+      parsed.suburbs = (parsed.suburbs||[]).map(s=>({
+        ...s, tasks: s.tasks||[], bests: s.bests||[], ratings: s.ratings||[]
+      }));
       return parsed;
     }
-    // migrate from v1 (plain array of suburbs, no settings)
-    const oldRaw = localStorage.getItem(OLD_STORAGE_KEY);
-    if(oldRaw){
-      const oldSuburbs = JSON.parse(oldRaw);
-      return { settings: freshSettings(), suburbs: Array.isArray(oldSuburbs) ? oldSuburbs : [] };
+    const v2Raw = localStorage.getItem(V2_KEY);
+    if(v2Raw){
+      const old = JSON.parse(v2Raw);
+      const settings = {
+        taskTemplates: (old.settings && old.settings.taskTemplates) || freshSettings().taskTemplates,
+        bestCategories: ((old.settings && old.settings.ratingCategories) || []).map(c=>({id:uid(), name:c.name})),
+        ratingCategories: freshSettings().ratingCategories
+      };
+      if(!settings.bestCategories.length) settings.bestCategories = freshSettings().bestCategories;
+      const suburbs = (old.suburbs||[]).map(sub=>{
+        const split = splitOldSuperlatives(sub.superlatives);
+        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings};
+      });
+      return {settings, suburbs};
     }
-    return { settings: freshSettings(), suburbs: [] };
+    const v1Raw = localStorage.getItem(V1_KEY);
+    if(v1Raw){
+      const oldSuburbs = JSON.parse(v1Raw);
+      const suburbs = (Array.isArray(oldSuburbs)?oldSuburbs:[]).map(sub=>{
+        const split = splitOldSuperlatives(sub.superlatives);
+        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings};
+      });
+      return {settings: freshSettings(), suburbs};
+    }
+    return {settings: freshSettings(), suburbs: []};
   }catch(e){
-    return { settings: freshSettings(), suburbs: [] };
+    return {settings: freshSettings(), suburbs: []};
   }
 }
 function save(){
@@ -346,6 +415,11 @@ function progressOf(suburb){
   const done = suburb.tasks.filter(t=>t.done).length;
   return Math.round((done/suburb.tasks.length)*100);
 }
+function avgRating(suburb){
+  const rated = suburb.ratings.filter(r=>r.stars>0);
+  if(!rated.length) return null;
+  return rated.reduce((sum,r)=>sum+r.stars,0)/rated.length;
+}
 
 function renderGrid(){
   const grid = document.getElementById('suburbGrid');
@@ -353,7 +427,7 @@ function renderGrid(){
   state.suburbs.forEach(sub=>{
     const pct = progressOf(sub);
     const doneCount = sub.tasks.filter(t=>t.done).length;
-    const topRated = sub.superlatives.filter(s=>s.rating>0).sort((a,b)=>b.rating-a.rating)[0];
+    const avg = avgRating(sub);
     const card = document.createElement('div');
     card.className = 'card';
     card.onclick = ()=>openSuburb(sub.id);
@@ -371,7 +445,7 @@ function renderGrid(){
       <p class="region">${escapeHtml(sub.region || '')}</p>
       <div class="meta-row">
         <span>${doneCount}/${sub.tasks.length} done</span>
-        <span>${topRated ? '★'.repeat(topRated.rating) : '—'}</span>
+        <span>${avg!==null ? '★ '+avg.toFixed(1) : '—'}</span>
       </div>
     `;
     grid.appendChild(card);
@@ -393,7 +467,8 @@ function createSuburb(){
     region: region.trim(),
     createdAt: Date.now(),
     tasks: state.settings.taskTemplates.map(t=>({id:uid(), label:t.label, done:false})),
-    superlatives: state.settings.ratingCategories.map(c=>({id:uid(), category:c.name, place:'', rating:0, note:''}))
+    bests: state.settings.bestCategories.map(c=>({id:uid(), category:c.name, place:'', note:''})),
+    ratings: state.settings.ratingCategories.map(c=>({id:uid(), category:c.name, stars:0, note:''}))
   };
   state.suburbs.push(sub);
   save();
@@ -452,27 +527,47 @@ function renderDetail(){
     taskList.appendChild(row);
   });
 
-  const supList = document.getElementById('supList');
-  supList.innerHTML = '';
-  sub.superlatives.forEach(s=>{
+  const bestsList = document.getElementById('bestsList');
+  bestsList.innerHTML = '';
+  if(!sub.bests.length){
+    bestsList.innerHTML = '<p class="empty-note">No best categories yet.</p>';
+  }
+  sub.bests.forEach(b=>{
     const box = document.createElement('div');
-    box.className = 'superlative';
+    box.className = 'best-card';
+    box.innerHTML = `
+      <span class="best-cat">${escapeHtml(b.category)}</span>
+      <input class="best-place" placeholder="Where? e.g. Corner of King & George St" value="${escapeAttr(b.place)}"
+        oninput="updateBestField('${b.id}','place',this.value)">
+      <textarea class="best-note" placeholder="Notes / what to photograph..." rows="1"
+        oninput="updateBestField('${b.id}','note',this.value)">${escapeHtml(b.note)}</textarea>
+      <button class="best-del" onclick="deleteBest('${b.id}')">Remove category</button>
+    `;
+    bestsList.appendChild(box);
+  });
+
+  const ratingsList = document.getElementById('ratingsList');
+  ratingsList.innerHTML = '';
+  if(!sub.ratings.length){
+    ratingsList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
+  }
+  sub.ratings.forEach(r=>{
     let starsHtml = '';
     for(let i=1;i<=5;i++){
-      starsHtml += `<span class="star ${i<=s.rating?'on':''}" onclick="setRating('${s.id}',${i})">★</span>`;
+      starsHtml += `<span class="star ${i<=r.stars?'on':''}" onclick="setRatingStars('${r.id}',${i})">★</span>`;
     }
-    box.innerHTML = `
-      <div class="sup-top">
-        <span class="sup-cat">${escapeHtml(s.category)}</span>
+    const row = document.createElement('div');
+    row.className = 'rating-row';
+    row.innerHTML = `
+      <div class="rating-top">
+        <span class="rating-cat">${escapeHtml(r.category)}</span>
         <div class="stars">${starsHtml}</div>
       </div>
-      <input class="sup-place" placeholder="Where? e.g. Corner of King & George St" value="${escapeAttr(s.place)}"
-        oninput="updateSupField('${s.id}','place',this.value)">
-      <textarea class="sup-note" placeholder="Notes / what to photograph..." rows="1"
-        oninput="updateSupField('${s.id}','note',this.value)">${escapeHtml(s.note)}</textarea>
-      <button class="sup-del" onclick="deleteSuperlative('${s.id}')">Remove category</button>
+      <textarea class="rating-note" placeholder="Notes (optional)..." rows="1"
+        oninput="updateRatingNote('${r.id}',this.value)">${escapeHtml(r.note)}</textarea>
+      <button class="rating-del" onclick="deleteRating('${r.id}')">Remove category</button>
     `;
-    supList.appendChild(box);
+    ratingsList.appendChild(row);
   });
 }
 
@@ -500,31 +595,54 @@ function addTask(){
   renderDetail();
 }
 
-function setRating(supId, val){
+function updateBestField(bestId, field, val){
   const sub = getActive();
-  const s = sub.superlatives.find(x=>x.id===supId);
-  s.rating = (s.rating===val) ? 0 : val; // clicking the current rating clears it
+  const b = sub.bests.find(x=>x.id===bestId);
+  b[field] = val;
+  save();
+}
+function deleteBest(bestId){
+  const sub = getActive();
+  sub.bests = sub.bests.filter(b=>b.id!==bestId);
   save();
   renderDetail();
 }
-function updateSupField(supId, field, val){
-  const sub = getActive();
-  const s = sub.superlatives.find(x=>x.id===supId);
-  s[field] = val;
-  save();
-}
-function deleteSuperlative(supId){
-  const sub = getActive();
-  sub.superlatives = sub.superlatives.filter(s=>s.id!==supId);
-  save();
-  renderDetail();
-}
-function addSuperlative(){
-  const input = document.getElementById('newSupInput');
+function addBest(){
+  const input = document.getElementById('newBestInput');
   const val = input.value.trim();
   if(!val) return;
   const sub = getActive();
-  sub.superlatives.push({id:uid(), category:val, place:'', rating:0, note:''});
+  sub.bests.push({id:uid(), category:val, place:'', note:''});
+  input.value='';
+  save();
+  renderDetail();
+}
+
+function setRatingStars(ratingId, val){
+  const sub = getActive();
+  const r = sub.ratings.find(x=>x.id===ratingId);
+  r.stars = (r.stars===val) ? 0 : val; // clicking the current rating clears it
+  save();
+  renderDetail();
+}
+function updateRatingNote(ratingId, val){
+  const sub = getActive();
+  const r = sub.ratings.find(x=>x.id===ratingId);
+  r.note = val;
+  save();
+}
+function deleteRating(ratingId){
+  const sub = getActive();
+  sub.ratings = sub.ratings.filter(r=>r.id!==ratingId);
+  save();
+  renderDetail();
+}
+function addRating(){
+  const input = document.getElementById('newRatingInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const sub = getActive();
+  sub.ratings.push({id:uid(), category:val, stars:0, note:''});
   input.value='';
   save();
   renderDetail();
@@ -546,19 +664,34 @@ function renderSettings(){
     taskList.appendChild(row);
   });
 
-  const catList = document.getElementById('globalCatList');
-  catList.innerHTML = '';
+  const bestList = document.getElementById('globalBestList');
+  bestList.innerHTML = '';
+  if(!state.settings.bestCategories.length){
+    bestList.innerHTML = '<p class="empty-note">No best categories yet.</p>';
+  }
+  state.settings.bestCategories.forEach(c=>{
+    const row = document.createElement('div');
+    row.className = 'setting-row';
+    row.innerHTML = `
+      <div class="label">${escapeHtml(c.name)}</div>
+      <button class="task-del" onclick="removeGlobalBest('${c.id}')">&times;</button>
+    `;
+    bestList.appendChild(row);
+  });
+
+  const ratingList = document.getElementById('globalRatingList');
+  ratingList.innerHTML = '';
   if(!state.settings.ratingCategories.length){
-    catList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
+    ratingList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
   }
   state.settings.ratingCategories.forEach(c=>{
     const row = document.createElement('div');
     row.className = 'setting-row';
     row.innerHTML = `
       <div class="label">${escapeHtml(c.name)}</div>
-      <button class="task-del" onclick="removeGlobalCategory('${c.id}')">&times;</button>
+      <button class="task-del" onclick="removeGlobalRating('${c.id}')">&times;</button>
     `;
-    catList.appendChild(row);
+    ratingList.appendChild(row);
   });
 }
 
@@ -588,8 +721,34 @@ function syncTasksToAll(){
   alert('Missing tasks added to all suburbs.');
 }
 
-function addGlobalCategory(){
-  const input = document.getElementById('newGlobalCatInput');
+function addGlobalBest(){
+  const input = document.getElementById('newGlobalBestInput');
+  const val = input.value.trim();
+  if(!val) return;
+  if(state.settings.bestCategories.some(c=>norm(c.name)===norm(val))){ input.value=''; return; }
+  state.settings.bestCategories.push({id:uid(), name:val});
+  input.value='';
+  save();
+  renderSettings();
+}
+function removeGlobalBest(id){
+  state.settings.bestCategories = state.settings.bestCategories.filter(c=>c.id!==id);
+  save();
+  renderSettings();
+}
+function syncBestsToAll(){
+  state.suburbs.forEach(sub=>{
+    state.settings.bestCategories.forEach(c=>{
+      const exists = sub.bests.some(x=>norm(x.category)===norm(c.name));
+      if(!exists) sub.bests.push({id:uid(), category:c.name, place:'', note:''});
+    });
+  });
+  save();
+  alert('Missing best categories added to all suburbs.');
+}
+
+function addGlobalRating(){
+  const input = document.getElementById('newGlobalRatingInput');
   const val = input.value.trim();
   if(!val) return;
   if(state.settings.ratingCategories.some(c=>norm(c.name)===norm(val))){ input.value=''; return; }
@@ -598,20 +757,20 @@ function addGlobalCategory(){
   save();
   renderSettings();
 }
-function removeGlobalCategory(id){
+function removeGlobalRating(id){
   state.settings.ratingCategories = state.settings.ratingCategories.filter(c=>c.id!==id);
   save();
   renderSettings();
 }
-function syncCategoriesToAll(){
+function syncRatingsToAll(){
   state.suburbs.forEach(sub=>{
     state.settings.ratingCategories.forEach(c=>{
-      const exists = sub.superlatives.some(x=>norm(x.category)===norm(c.name));
-      if(!exists) sub.superlatives.push({id:uid(), category:c.name, place:'', rating:0, note:''});
+      const exists = sub.ratings.some(x=>norm(x.category)===norm(c.name));
+      if(!exists) sub.ratings.push({id:uid(), category:c.name, stars:0, note:''});
     });
   });
   save();
-  alert('Missing categories added to all suburbs.');
+  alert('Missing rating categories added to all suburbs.');
 }
 
 function escapeHtml(str){

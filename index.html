@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Field Log — Suburb Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#161F29;
+    --ink-soft:#212D3A;
+    --ink-line:#33435570;
+    --paper:#ECE4CF;
+    --paper-dim:#DCD2B4;
+    --paper-line:#c9bd9a;
+    --brass:#C4903F;
+    --brass-dim:#8a662c;
+    --rust:#AE452E;
+    --sage:#71805B;
+    --text-ink:#1c2530;
+    --text-dim:#5b6672;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    background-image:
+      radial-gradient(circle at 15% 20%, #1c2735 0%, transparent 45%),
+      radial-gradient(circle at 85% 75%, #1a2432 0%, transparent 50%);
+    color:var(--paper);
+    font-family:'Public Sans', sans-serif;
+    min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:60px;
+  }
+  .contour{position:fixed;inset:0;z-index:0;opacity:.16;pointer-events:none;}
+  .wrap{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:28px 18px 40px;}
+
+  header.top{margin-bottom:22px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--brass);margin:0 0 6px;
+  }
+  h1.title{
+    font-family:'Fraunces',serif;font-weight:700;font-size:34px;
+    margin:0 0 4px;color:var(--paper);letter-spacing:-.01em;
+  }
+  .subtitle{color:#9aa5b1;font-size:14px;margin:0;}
+
+  /* ===== Suburb grid ===== */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px;}
+  @media (max-width:420px){.grid{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--paper);
+    border-radius:3px;
+    padding:16px 14px 14px;
+    position:relative;
+    cursor:pointer;
+    border:1px solid var(--paper-line);
+    box-shadow:0 2px 0 rgba(0,0,0,.25), 0 8px 18px -10px rgba(0,0,0,.5);
+    transition:transform .15s ease, box-shadow .15s ease;
+    color:var(--text-ink);
+    overflow:hidden;
+  }
+  .card:active{transform:scale(.98);}
+  .card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:4px;
+    background:repeating-linear-gradient(90deg,var(--brass) 0 6px, transparent 6px 12px);
+    opacity:.6;
+  }
+  .card .stamp-ring{
+    width:46px;height:46px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;
+    margin-bottom:10px;position:relative;flex-shrink:0;
+  }
+  .ring-svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+  .card .name{
+    font-family:'Fraunces',serif;font-weight:600;font-size:19px;line-height:1.15;
+    margin:0 0 2px;
+  }
+  .card .region{
+    font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;
+    margin:0 0 10px;
+  }
+  .card .meta-row{
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--brass-dim);
+    display:flex;justify-content:space-between;border-top:1px dashed var(--paper-line);
+    padding-top:8px;
+  }
+  .explored-stamp{
+    position:absolute;top:10px;right:8px;
+    border:2px solid var(--rust);color:var(--rust);
+    font-family:'JetBrains Mono',monospace;font-weight:700;font-size:9.5px;
+    letter-spacing:.08em;padding:3px 6px;border-radius:3px;
+    transform:rotate(9deg);opacity:.85;text-transform:uppercase;
+  }
+
+  .add-card{
+    border:2px dashed #6b7688; background:transparent; color:#9aa5b1;
+    border-radius:3px; display:flex; align-items:center; justify-content:center;
+    min-height:118px; cursor:pointer; font-family:'JetBrains Mono',monospace;
+    font-size:12px; letter-spacing:.05em; text-transform:uppercase; text-align:center;
+    padding:14px;
+  }
+  .add-card:active{background:#ffffff08;}
+
+  /* ===== Detail view ===== */
+  .hidden{display:none !important;}
+  .backbtn{
+    background:none;border:none;color:var(--brass);font-family:'JetBrains Mono',monospace;
+    font-size:12px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;padding:0;
+    margin-bottom:16px;display:flex;align-items:center;gap:6px;
+  }
+  .detail-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:22px;}
+  .detail-head h2{
+    font-family:'Fraunces',serif;font-size:30px;font-weight:700;margin:0 0 4px;color:var(--paper);
+  }
+  .detail-head .region{color:#9aa5b1;font-size:13px;text-transform:uppercase;letter-spacing:.06em;}
+  .del-suburb{
+    background:none;border:1px solid #6b455055;color:#c47f6f;border-radius:3px;
+    font-family:'JetBrains Mono',monospace;font-size:10px;padding:6px 8px;cursor:pointer;
+    text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;
+  }
+
+  .section-label{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--brass);margin:28px 0 10px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .section-label::after{content:'';flex:1;height:1px;background:var(--ink-line);}
+
+  .task-row{
+    display:flex;align-items:center;gap:12px;background:var(--ink-soft);
+    border:1px solid var(--ink-line);border-radius:3px;padding:11px 12px;margin-bottom:8px;
+  }
+  .task-check{
+    width:22px;height:22px;border-radius:50%;border:2px solid var(--brass);
+    flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    background:transparent;
+  }
+  .task-check.done{background:var(--sage);border-color:var(--sage);}
+  .task-check.done::after{content:'✓';color:var(--ink);font-size:12px;font-weight:700;}
+  .task-label{flex:1;font-size:14.5px;}
+  .task-label.done{color:#8f9aa5;text-decoration:line-through;text-decoration-color:#5b6672;}
+  .task-del{background:none;border:none;color:#5b6672;font-size:16px;cursor:pointer;padding:2px 4px;line-height:1;}
+
+  .add-row{display:flex;gap:8px;margin-top:6px;}
+  .add-row input{
+    flex:1;background:var(--ink-soft);border:1px solid var(--ink-line);border-radius:3px;
+    color:var(--paper);padding:10px 12px;font-family:'Public Sans',sans-serif;font-size:13.5px;
+  }
+  .add-row input::placeholder{color:#5b6672;}
+  .add-row button{
+    background:var(--brass);border:none;color:var(--ink);border-radius:3px;
+    padding:0 16px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;
+    cursor:pointer;text-transform:uppercase;
+  }
+
+  .superlative{
+    background:var(--ink-soft);border:1px solid var(--ink-line);border-radius:3px;
+    padding:13px 14px;margin-bottom:10px;
+  }
+  .sup-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .sup-cat{
+    font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--brass);
+  }
+  .stars{display:flex;gap:3px;}
+  .star{cursor:pointer;font-size:16px;color:#4a5768;user-select:none;}
+  .star.on{color:var(--brass);}
+  .sup-place{
+    width:100%;background:transparent;border:none;border-bottom:1px solid var(--ink-line);
+    color:var(--paper);font-family:'Fraunces',serif;font-size:16px;padding:4px 0;margin-bottom:8px;
+  }
+  .sup-place::placeholder{color:#5b6672;font-family:'Public Sans',sans-serif;}
+  .sup-note{
+    width:100%;background:transparent;border:none;color:#b7c0cb;font-size:12.5px;
+    resize:none;font-family:'Public Sans',sans-serif;padding:0;min-height:32px;
+  }
+  .sup-note::placeholder{color:#4a5563;}
+  .sup-del{
+    background:none;border:none;color:#5b6672;font-size:11px;cursor:pointer;
+    font-family:'JetBrains Mono',monospace;text-transform:uppercase;margin-top:6px;padding:0;
+  }
+
+  .progress-bar{height:5px;background:var(--ink-soft);border-radius:3px;overflow:hidden;margin-top:14px;}
+  .progress-fill{height:100%;background:var(--sage);transition:width .3s ease;}
+
+  .empty-note{color:#6b7684;font-size:13px;font-style:italic;padding:6px 0 14px;}
+
+  footer.tip{
+    max-width:640px;margin:36px auto 0;padding:0 18px;color:#5b6672;
+    font-size:11.5px;text-align:center;font-family:'JetBrains Mono',monospace;
+    letter-spacing:.03em;
+  }
+</style>
+</head>
+<body>
+
+<svg class="contour" preserveAspectRatio="none" viewBox="0 0 400 800" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#4a5c70" stroke-width="1">
+    <path d="M-20 100 Q 100 40 220 110 T 420 90"/>
+    <path d="M-20 160 Q 100 100 220 170 T 420 150"/>
+    <path d="M-20 220 Q 100 160 220 230 T 420 210"/>
+    <path d="M-20 620 Q 120 560 240 630 T 420 600"/>
+    <path d="M-20 680 Q 120 620 240 690 T 420 660"/>
+    <path d="M-20 740 Q 120 680 240 750 T 420 720"/>
+  </g>
+</svg>
+
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Field Log · No. 01</p>
+    <h1 class="title">Suburb Explorer</h1>
+    <p class="subtitle">Your ongoing catalogue of neighbourhoods, walked and rated.</p>
+  </header>
+
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <div class="grid" id="suburbGrid"></div>
+  </div>
+
+  <!-- DETAIL VIEW -->
+  <div id="detailView" class="hidden">
+    <button class="backbtn" onclick="goToList()">&larr; All suburbs</button>
+    <div class="detail-head">
+      <div>
+        <h2 id="detName"></h2>
+        <div class="region" id="detRegion"></div>
+      </div>
+      <button class="del-suburb" onclick="deleteSuburb()">Remove</button>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
+
+    <div class="section-label">Things to do</div>
+    <div id="taskList"></div>
+    <div class="add-row">
+      <input id="newTaskInput" type="text" placeholder="Add a task, e.g. Farmers market">
+      <button onclick="addTask()">Add</button>
+    </div>
+
+    <div class="section-label">Superlatives</div>
+    <div id="supList"></div>
+    <div class="add-row">
+      <input id="newSupInput" type="text" placeholder="New category, e.g. Best pub">
+      <button onclick="addSuperlative()">Add</button>
+    </div>
+  </div>
+</div>
+
+<footer class="tip">Stored on this device only · No account, no upload</footer>
+
+<script>
+const STORAGE_KEY = 'field-log-suburbs-v1';
+const DEFAULT_TASKS = ['Bike ride', 'Try a restaurant', 'Browse the shops', 'Walk the main street', 'Visit a park'];
+const DEFAULT_SUPS = ['Best lookout', 'Best street', 'Best café', 'Best sunset spot'];
+
+let state = load();
+let activeId = null;
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+function progressOf(suburb){
+  if(!suburb.tasks.length) return 0;
+  const done = suburb.tasks.filter(t=>t.done).length;
+  return Math.round((done/suburb.tasks.length)*100);
+}
+
+function renderGrid(){
+  const grid = document.getElementById('suburbGrid');
+  grid.innerHTML = '';
+  state.forEach(sub=>{
+    const pct = progressOf(sub);
+    const doneCount = sub.tasks.filter(t=>t.done).length;
+    const topRated = sub.superlatives.filter(s=>s.rating>0).sort((a,b)=>b.rating-a.rating)[0];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.onclick = ()=>openSuburb(sub.id);
+    card.innerHTML = `
+      ${pct===100 ? '<div class="explored-stamp">Explored</div>' : ''}
+      <div class="stamp-ring">
+        <svg class="ring-svg" width="46" height="46">
+          <circle cx="23" cy="23" r="19" fill="none" stroke="#00000018" stroke-width="4"/>
+          <circle cx="23" cy="23" r="19" fill="none" stroke="${pct===100?'#71805B':'#C4903F'}" stroke-width="4"
+            stroke-dasharray="${2*Math.PI*19}" stroke-dashoffset="${2*Math.PI*19*(1-pct/100)}" stroke-linecap="round"/>
+        </svg>
+        <span>${pct}%</span>
+      </div>
+      <p class="name">${escapeHtml(sub.name)}</p>
+      <p class="region">${escapeHtml(sub.region || '')}</p>
+      <div class="meta-row">
+        <span>${doneCount}/${sub.tasks.length} done</span>
+        <span>${topRated ? '★'.repeat(topRated.rating) : '—'}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+  const addCard = document.createElement('div');
+  addCard.className = 'add-card';
+  addCard.innerHTML = '+<br>New suburb';
+  addCard.onclick = createSuburb;
+  grid.appendChild(addCard);
+}
+
+function createSuburb(){
+  const name = prompt('Suburb name?');
+  if(!name || !name.trim()) return;
+  const region = prompt('Region / city? (optional)') || '';
+  const sub = {
+    id: uid(),
+    name: name.trim(),
+    region: region.trim(),
+    createdAt: Date.now(),
+    tasks: DEFAULT_TASKS.map(l=>({id:uid(), label:l, done:false})),
+    superlatives: DEFAULT_SUPS.map(c=>({id:uid(), category:c, place:'', rating:0, note:''}))
+  };
+  state.push(sub);
+  save();
+  renderGrid();
+}
+
+function deleteSuburb(){
+  if(!confirm('Remove this suburb and all its data?')) return;
+  state = state.filter(s=>s.id!==activeId);
+  save();
+  goToList();
+}
+
+function openSuburb(id){
+  activeId = id;
+  document.getElementById('listView').classList.add('hidden');
+  document.getElementById('detailView').classList.remove('hidden');
+  renderDetail();
+}
+function goToList(){
+  activeId = null;
+  document.getElementById('detailView').classList.add('hidden');
+  document.getElementById('listView').classList.remove('hidden');
+  renderGrid();
+}
+
+function getActive(){ return state.find(s=>s.id===activeId); }
+
+function renderDetail(){
+  const sub = getActive();
+  if(!sub) return goToList();
+  document.getElementById('detName').textContent = sub.name;
+  document.getElementById('detRegion').textContent = sub.region || '';
+  document.getElementById('progFill').style.width = progressOf(sub)+'%';
+
+  const taskList = document.getElementById('taskList');
+  taskList.innerHTML = '';
+  if(!sub.tasks.length){
+    taskList.innerHTML = '<p class="empty-note">No tasks yet — add one below.</p>';
+  }
+  sub.tasks.forEach(t=>{
+    const row = document.createElement('div');
+    row.className = 'task-row';
+    row.innerHTML = `
+      <div class="task-check ${t.done?'done':''}" onclick="toggleTask('${t.id}')"></div>
+      <div class="task-label ${t.done?'done':''}">${escapeHtml(t.label)}</div>
+      <button class="task-del" onclick="deleteTask('${t.id}')">&times;</button>
+    `;
+    taskList.appendChild(row);
+  });
+
+  const supList = document.getElementById('supList');
+  supList.innerHTML = '';
+  sub.superlatives.forEach(s=>{
+    const box = document.createElement('div');
+    box.className = 'superlative';
+    let starsHtml = '';
+    for(let i=1;i<=5;i++){
+      starsHtml += `<span class="star ${i<=s.rating?'on':''}" onclick="setRating('${s.id}',${i})">★</span>`;
+    }
+    box.innerHTML = `
+      <div class="sup-top">
+        <span class="sup-cat">${escapeHtml(s.category)}</span>
+        <div class="stars">${starsHtml}</div>
+      </div>
+      <input class="sup-place" placeholder="Where? e.g. Corner of King & George St" value="${escapeAttr(s.place)}"
+        oninput="updateSupField('${s.id}','place',this.value)">
+      <textarea class="sup-note" placeholder="Notes / what to photograph..." rows="1"
+        oninput="updateSupField('${s.id}','note',this.value)">${escapeHtml(s.note)}</textarea>
+      <button class="sup-del" onclick="deleteSuperlative('${s.id}')">Remove category</button>
+    `;
+    supList.appendChild(box);
+  });
+}
+
+function toggleTask(taskId){
+  const sub = getActive();
+  const t = sub.tasks.find(x=>x.id===taskId);
+  t.done = !t.done;
+  save();
+  renderDetail();
+}
+function deleteTask(taskId){
+  const sub = getActive();
+  sub.tasks = sub.tasks.filter(t=>t.id!==taskId);
+  save();
+  renderDetail();
+}
+function addTask(){
+  const input = document.getElementById('newTaskInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const sub = getActive();
+  sub.tasks.push({id:uid(), label:val, done:false});
+  input.value='';
+  save();
+  renderDetail();
+}
+
+function setRating(supId, val){
+  const sub = getActive();
+  const s = sub.superlatives.find(x=>x.id===supId);
+  s.rating = (s.rating===val) ? 0 : val; // clicking the current rating clears it
+  save();
+  renderDetail();
+}
+function updateSupField(supId, field, val){
+  const sub = getActive();
+  const s = sub.superlatives.find(x=>x.id===supId);
+  s[field] = val;
+  save();
+}
+function deleteSuperlative(supId){
+  const sub = getActive();
+  sub.superlatives = sub.superlatives.filter(s=>s.id!==supId);
+  save();
+  renderDetail();
+}
+function addSuperlative(){
+  const input = document.getElementById('newSupInput');
+  const val = input.value.trim();
+  if(!val) return;
+  const sub = getActive();
+  sub.superlatives.push({id:uid(), category:val, place:'', rating:0, note:''});
+  input.value='';
+  save();
+  renderDetail();
+}
+
+function escapeHtml(str){
+  return (str||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+renderGrid();
+</script>
+</body>
+</html>

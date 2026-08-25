@@ -226,6 +226,13 @@
   .progress-bar{height:5px;background:var(--ink-soft);border-radius:3px;overflow:hidden;margin-top:14px;}
   .progress-fill{height:100%;background:var(--sage);transition:width .3s ease;}
 
+  .suburb-notes{
+    width:100%;background:var(--ink-soft);border:1px solid var(--ink-line);border-radius:3px;
+    color:var(--paper);font-size:13.5px;font-family:'Public Sans',sans-serif;padding:11px 12px;
+    resize:vertical;min-height:52px;margin-top:2px;
+  }
+  .suburb-notes::placeholder{color:#5b6672;}
+
   .empty-note{color:#6b7684;font-size:13px;font-style:italic;padding:6px 0 14px;}
 
   footer.tip{
@@ -306,6 +313,11 @@
       </div>
       <button class="del-suburb" onclick="deleteSuburb()">Remove</button>
     </div>
+
+    <div class="section-label">Notes</div>
+    <textarea id="suburbNotesInput" class="suburb-notes" placeholder="General notes about this suburb..."
+      oninput="updateSuburbNotes(this.value)"></textarea>
+
     <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:0%"></div></div>
 
     <div class="section-label">Things to do</div>
@@ -371,7 +383,7 @@ function load(){
       parsed.settings.bestCategories = parsed.settings.bestCategories || fresh.bestCategories;
       parsed.settings.ratingCategories = parsed.settings.ratingCategories || fresh.ratingCategories;
       parsed.suburbs = (parsed.suburbs||[]).map(s=>({
-        ...s, tasks: s.tasks||[], bests: s.bests||[], ratings: s.ratings||[]
+        ...s, tasks: s.tasks||[], bests: s.bests||[], ratings: s.ratings||[], notes: s.notes||''
       }));
       return parsed;
     }
@@ -386,7 +398,7 @@ function load(){
       if(!settings.bestCategories.length) settings.bestCategories = freshSettings().bestCategories;
       const suburbs = (old.suburbs||[]).map(sub=>{
         const split = splitOldSuperlatives(sub.superlatives);
-        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings};
+        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings, notes:''};
       });
       return {settings, suburbs};
     }
@@ -395,7 +407,7 @@ function load(){
       const oldSuburbs = JSON.parse(v1Raw);
       const suburbs = (Array.isArray(oldSuburbs)?oldSuburbs:[]).map(sub=>{
         const split = splitOldSuperlatives(sub.superlatives);
-        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings};
+        return {id:sub.id, name:sub.name, region:sub.region, createdAt:sub.createdAt, tasks:sub.tasks||[], bests:split.bests, ratings:split.ratings, notes:''};
       });
       return {settings: freshSettings(), suburbs};
     }
@@ -420,6 +432,16 @@ function avgRating(suburb){
   if(!rated.length) return null;
   return rated.reduce((sum,r)=>sum+r.stars,0)/rated.length;
 }
+function isVibe(item){ return norm(item.category||item.name)==='overall vibe'; }
+function vibeFirst(arr){
+  return [...arr].sort((a,b)=> (isVibe(b)?1:0) - (isVibe(a)?1:0));
+}
+function vibeCardDisplay(suburb){
+  const vibe = suburb.ratings.find(isVibe);
+  if(vibe && vibe.stars>0) return '★'.repeat(vibe.stars) + '☆'.repeat(5-vibe.stars);
+  const avg = avgRating(suburb);
+  return avg!==null ? '★ '+avg.toFixed(1) : '—';
+}
 
 function renderGrid(){
   const grid = document.getElementById('suburbGrid');
@@ -427,7 +449,7 @@ function renderGrid(){
   state.suburbs.forEach(sub=>{
     const pct = progressOf(sub);
     const doneCount = sub.tasks.filter(t=>t.done).length;
-    const avg = avgRating(sub);
+    const vibeText = vibeCardDisplay(sub);
     const card = document.createElement('div');
     card.className = 'card';
     card.onclick = ()=>openSuburb(sub.id);
@@ -445,7 +467,7 @@ function renderGrid(){
       <p class="region">${escapeHtml(sub.region || '')}</p>
       <div class="meta-row">
         <span>${doneCount}/${sub.tasks.length} done</span>
-        <span>${avg!==null ? '★ '+avg.toFixed(1) : '—'}</span>
+        <span title="Overall vibe">${vibeText}</span>
       </div>
     `;
     grid.appendChild(card);
@@ -468,7 +490,8 @@ function createSuburb(){
     createdAt: Date.now(),
     tasks: state.settings.taskTemplates.map(t=>({id:uid(), label:t.label, done:false})),
     bests: state.settings.bestCategories.map(c=>({id:uid(), category:c.name, place:'', note:''})),
-    ratings: state.settings.ratingCategories.map(c=>({id:uid(), category:c.name, stars:0, note:''}))
+    ratings: state.settings.ratingCategories.map(c=>({id:uid(), category:c.name, stars:0, note:''})),
+    notes: ''
   };
   state.suburbs.push(sub);
   save();
@@ -509,6 +532,7 @@ function renderDetail(){
   if(!sub) return goToList();
   document.getElementById('detName').textContent = sub.name;
   document.getElementById('detRegion').textContent = sub.region || '';
+  document.getElementById('suburbNotesInput').value = sub.notes || '';
   document.getElementById('progFill').style.width = progressOf(sub)+'%';
 
   const taskList = document.getElementById('taskList');
@@ -551,7 +575,7 @@ function renderDetail(){
   if(!sub.ratings.length){
     ratingsList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
   }
-  sub.ratings.forEach(r=>{
+  vibeFirst(sub.ratings).forEach(r=>{
     let starsHtml = '';
     for(let i=1;i<=5;i++){
       starsHtml += `<span class="star ${i<=r.stars?'on':''}" onclick="setRatingStars('${r.id}',${i})">★</span>`;
@@ -569,6 +593,12 @@ function renderDetail(){
     `;
     ratingsList.appendChild(row);
   });
+}
+
+function updateSuburbNotes(val){
+  const sub = getActive();
+  sub.notes = val;
+  save();
 }
 
 function toggleTask(taskId){
@@ -684,7 +714,7 @@ function renderSettings(){
   if(!state.settings.ratingCategories.length){
     ratingList.innerHTML = '<p class="empty-note">No rating categories yet.</p>';
   }
-  state.settings.ratingCategories.forEach(c=>{
+  vibeFirst(state.settings.ratingCategories).forEach(c=>{
     const row = document.createElement('div');
     row.className = 'setting-row';
     row.innerHTML = `
